@@ -1,5 +1,6 @@
 package com.ruleengine.core;
 
+import com.ruleengine.audit.AuditLogger;
 import com.ruleengine.evaluator.ExpressionEvaluator;
 import com.ruleengine.model.*;
 import io.micrometer.core.instrument.Counter;
@@ -7,6 +8,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -16,13 +18,16 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
- * Rule Engine Implementation
+ * Rule Engine Implementation - Phase 2 Enhanced
  *
  * Features:
  * - Dynamic rule execution
  * - Priority-based ordering
- * - Dependency resolution
+ * - Dependency resolution (DAG)
  * - Performance tracking
+ * - Rule indexing for O(1) lookup
+ * - Temporal window support
+ * - Comprehensive audit logging
  * - Concurrent execution support
  */
 @Component
@@ -33,6 +38,11 @@ public class RuleEngineImpl implements RuleEngine {
     private final List<ExpressionEvaluator> evaluators;
     private final ActionExecutor actionExecutor;
     private final MeterRegistry meterRegistry;
+
+    // Phase 2 Components
+    private final RuleIndexer ruleIndexer;
+    private final TemporalRuleExecutor temporalExecutor;
+    private final AuditLogger auditLogger;
 
     // Statistics
     private final AtomicLong totalExecutions = new AtomicLong(0);
@@ -48,10 +58,16 @@ public class RuleEngineImpl implements RuleEngine {
     public RuleEngineImpl(
             List<ExpressionEvaluator> evaluators,
             ActionExecutor actionExecutor,
-            MeterRegistry meterRegistry) {
+            MeterRegistry meterRegistry,
+            @Autowired(required = false) RuleIndexer ruleIndexer,
+            @Autowired(required = false) TemporalRuleExecutor temporalExecutor,
+            @Autowired(required = false) AuditLogger auditLogger) {
         this.evaluators = evaluators;
         this.actionExecutor = actionExecutor;
         this.meterRegistry = meterRegistry;
+        this.ruleIndexer = ruleIndexer;
+        this.temporalExecutor = temporalExecutor;
+        this.auditLogger = auditLogger;
 
         // Initialize metrics
         this.executionTimer = Timer.builder("rule.execution.time")
@@ -111,6 +127,18 @@ public class RuleEngineImpl implements RuleEngine {
             // Mark as executed
             context.markRuleExecuted(rule.getId());
 
+            // Evaluate temporal window (Phase 2 feature)
+            if (temporalExecutor != null && rule.getTemporalWindow() != null) {
+                boolean temporalMatch = temporalExecutor.evaluateTemporalRule(rule, context);
+                if (!temporalMatch) {
+                    RuleResult result = createSkippedResult(rule, "Temporal window condition not met");
+                    if (auditLogger != null) {
+                        auditLogger.logExecution(rule, context, result);
+                    }
+                    return result;
+                }
+            }
+
             // Evaluate conditions
             boolean matched = evaluateConditions(rule, context);
 
@@ -131,6 +159,11 @@ public class RuleEngineImpl implements RuleEngine {
             // Store result in context
             context.addRuleResult(rule.getId(), result);
 
+            // Audit logging (Phase 2 feature)
+            if (auditLogger != null) {
+                auditLogger.logExecution(rule, context, result);
+            }
+
             logger.debug("Rule {} executed: matched={}, time={}ms",
                     rule.getName(), matched, result.getExecutionTimeMs());
 
@@ -140,6 +173,12 @@ public class RuleEngineImpl implements RuleEngine {
             logger.error("Error executing rule: " + rule.getName(), e);
             RuleResult result = RuleResult.error(rule.getId(), rule.getName(), e.getMessage());
             result.setError(e.getMessage(), e);
+
+            // Audit error (Phase 2 feature)
+            if (auditLogger != null) {
+                auditLogger.logError(rule.getId(), rule.getName(), e.getMessage());
+            }
+
             return result;
         }
     }

@@ -3,26 +3,38 @@ package com.ruleengine.core;
 import com.ruleengine.model.Action;
 import com.ruleengine.model.RuleContext;
 import com.ruleengine.model.RuleResult;
+import com.ruleengine.streaming.KafkaRuleProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 /**
- * Action Executor - Executes rule actions
+ * Action Executor - Executes rule actions (Phase 2 Enhanced)
  *
  * Supports:
  * - Setting fact values
  * - Triggering other rules
- * - Executing scripts
+ * - Executing scripts (sandboxed)
  * - Calling external services
- * - Emitting events
+ * - Emitting events to Kafka
  */
 @Component
 public class ActionExecutor {
 
     private static final Logger logger = LoggerFactory.getLogger(ActionExecutor.class);
+
+    private final ScriptExecutor scriptExecutor;
+    private final KafkaRuleProducer kafkaProducer;
+
+    public ActionExecutor(
+            @Autowired(required = false) ScriptExecutor scriptExecutor,
+            @Autowired(required = false) KafkaRuleProducer kafkaProducer) {
+        this.scriptExecutor = scriptExecutor;
+        this.kafkaProducer = kafkaProducer;
+    }
 
     public void executeActions(List<Action> actions, RuleContext context, RuleResult result) {
         for (Action action : actions) {
@@ -76,21 +88,48 @@ public class ActionExecutor {
     }
 
     private void executeScript(Action action, RuleContext context, RuleResult result) {
-        // TODO: Implement sandboxed script execution
-        logger.warn("Script execution not yet implemented");
-        result.addActionResult(action.getId(), false, "Not implemented");
+        // Phase 2: Sandboxed script execution
+        if (scriptExecutor == null) {
+            logger.warn("ScriptExecutor not available");
+            result.addActionResult(action.getId(), false, "ScriptExecutor not configured");
+            return;
+        }
+
+        try {
+            Object scriptResult = scriptExecutor.executeScript(action, context);
+            result.addActionResult(action.getId(), true, scriptResult);
+            logger.debug("Script executed successfully");
+        } catch (Exception e) {
+            logger.error("Script execution failed", e);
+            result.addActionResult(action.getId(), false, e.getMessage());
+        }
     }
 
     private void executeCallService(Action action, RuleContext context, RuleResult result) {
-        // TODO: Implement external service calls
+        // TODO: Implement external service calls (future enhancement)
         logger.warn("Service call not yet implemented");
         result.addActionResult(action.getId(), false, "Not implemented");
     }
 
     private void executeEmitEvent(Action action, RuleContext context, RuleResult result) {
-        // TODO: Implement event emission to Kafka
-        logger.warn("Event emission not yet implemented");
-        result.addActionResult(action.getId(), false, "Not implemented");
+        // Phase 2: Kafka event emission
+        if (kafkaProducer == null) {
+            logger.warn("KafkaProducer not available");
+            result.addActionResult(action.getId(), false, "Kafka not configured");
+            return;
+        }
+
+        try {
+            String topic = action.getEventTopic();
+            Object payload = action.getEventPayload();
+
+            kafkaProducer.sendEvent(topic, context.getContextId(), payload);
+            result.addActionResult(action.getId(), true, "Event emitted to " + topic);
+            logger.debug("Event emitted to Kafka topic: {}", topic);
+        } catch (Exception e) {
+            logger.error("Event emission failed", e);
+            result.addActionResult(action.getId(), false, e.getMessage());
+        }
     }
 
     private void executeEnrichResult(Action action, RuleContext context, RuleResult result) {
