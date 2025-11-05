@@ -1,0 +1,99 @@
+[
+  {
+    "id": "fraud-detection-001",
+    "name": "High Value Transaction Alert",
+    "description": "Flag high-value transactions for manual review",
+    "ruleGroup": "fraud-detection",
+    "tenant": "bank-abc",
+    "priority": 100,
+    "salience": 90,
+    "enabled": true,
+    "version": 1,
+    "conditions": [
+      {
+        "field": "transaction.amount",
+        "operator": "GREATER_THAN",
+        "value": 10000
+      },
+      {
+        "field": "user.riskScore",
+        "operator": "GREATER_THAN",
+        "value": 70
+      }
+    ],
+    "conditionLogic": "AND",
+    "actions": [
+      {
+        "type": "SET_FACT",
+        "factKey": "requiresReview",
+        "factValue": true
+      },
+      {
+        "type": "ENRICH_RESULT",
+        "metadata": {
+          "alertType": "FRAUD",
+          "severity": "HIGH",
+          "reason": "High value transaction with elevated risk score"
+        }
+      }
+    ]
+  },
+  {
+    "id": "discount-premium-001",
+    "name": "Premium User Discount",
+    "description": "Apply discount for premium tier users",
+    "ruleGroup": "pricing",
+    "priority": 50,
+    "enabled": true,
+    "contextConstraints": {
+      "channel": "web"
+    },
+    "conditions": [
+      {
+        "field": "user.tier",
+        "operator": "EQUALS",
+        "value": "PREMIUM"
+      },
+      {
+        "field": "cart.total",
+        "operator": "GREATER_THAN",
+        "value": 100
+      }
+    ],
+    "conditionLogic": "AND",
+    "actions": [
+      {
+        "type": "SET_FACT",
+        "factKey": "discountPercent",
+        "factValue": 15
+      }
+    ]
+  },
+  {
+    "id": "approval-workflow-001",
+    "name": "Manager Approval Required",
+    "description": "Require manager approval for large purchases",
+    "ruleGroup": "workflow",
+    "priority": 80,
+    "enabled": true,
+    "conditions": [
+      {
+        "field": "order.amount",
+        "operator": "BETWEEN",
+        "value": [1000, 10000]
+      }
+    ],
+    "actions": [
+      {
+        "type": "SET_FACT",
+        "factKey": "approvalLevel",
+        "factValue": "MANAGER"
+      },
+      {
+        "type": "TRIGGER_RULE",
+        "ruleId": "notify-manager"
+      }
+    ],
+    "triggers": ["notify-manager"]
+  }
+]
