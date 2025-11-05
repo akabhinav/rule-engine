@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rule Engine Demo - Interactive Business Use Cases</title>
+    <link rel="stylesheet" href="/css/demo.css">
+</head>
+<body>
+    <div class="demo-container">
+        <!-- Header -->
+        <header class="demo-header">
+            <div class="header-content">
+                <h1 class="demo-title">
+                    <span class="icon">⚡</span>
+                    Next-Gen Rule Engine
+                    <span class="badge">Demo</span>
+                </h1>
+                <p class="demo-subtitle">Interactive Demo - 8 Real-World Business Use Cases</p>
+            </div>
+            <div class="header-actions">
+                <button id="resetBtn" class="btn btn-secondary">
+                    <span>🔄</span> Reset Demo
+                </button>
+                <div class="stats-mini" id="statsDisplay">
+                    <span class="stat-item">
+                        <span class="stat-label">Rules Loaded:</span>
+                        <span class="stat-value" id="rulesCount">0</span>
+                    </span>
+                    <span class="stat-item">
+                        <span class="stat-label">Executions:</span>
+                        <span class="stat-value" id="executionCount">0</span>
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="demo-main">
+            <!-- Sidebar -->
+            <aside class="demo-sidebar">
+                <div class="sidebar-section">
+                    <h3 class="section-title">
+                        <span>🏢</span> Complex Use Cases
+                    </h3>
+                    <div id="complexUseCases" class="use-case-list">
+                        <!-- Complex use cases will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="section-title">
+                        <span>📊</span> Medium Use Cases
+                    </h3>
+                    <div id="mediumUseCases" class="use-case-list">
+                        <!-- Medium use cases will be loaded here -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Content Area -->
+            <main class="demo-content">
+                <!-- Welcome Screen -->
+                <div id="welcomeScreen" class="welcome-screen">
+                    <div class="welcome-card">
+                        <div class="welcome-icon">🎯</div>
+                        <h2>Welcome to the Rule Engine Demo</h2>
+                        <p>Experience the power of our next-generation rule engine with 8 real-world business scenarios.</p>
+                        <div class="features-grid">
+                            <div class="feature-item">
+                                <div class="feature-icon">⚡</div>
+                                <h4>Lightning Fast</h4>
+                                <p>Sub-millisecond rule execution</p>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">🔄</div>
+                                <h4>Real-Time</h4>
+                                <p>Live rule evaluation & updates</p>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">🎨</div>
+                                <h4>Flexible</h4>
+                                <p>Complex business logic support</p>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">📈</div>
+                                <h4>Scalable</h4>
+                                <p>Handles millions of evaluations</p>
+                            </div>
+                        </div>
+                        <div class="welcome-action">
+                            <p class="instruction">👈 Select a use case from the sidebar to get started</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Use Case Detail View -->
+                <div id="useCaseView" class="use-case-view" style="display: none;">
+                    <div class="use-case-header">
+                        <div class="use-case-title-bar">
+                            <h2 id="useCaseTitle" class="use-case-title"></h2>
+                            <span id="useCaseCategory" class="category-badge"></span>
+                        </div>
+                        <p id="useCaseDescription" class="use-case-description"></p>
+                        <div class="use-case-actions">
+                            <button id="loadRulesBtn" class="btn btn-primary">
+                                <span>📥</span> Load Rules
+                            </button>
+                            <button id="viewRulesBtn" class="btn btn-secondary" disabled>
+                                <span>👁️</span> View Rules
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Field Descriptions -->
+                    <div id="fieldDescriptions" class="field-descriptions">
+                        <h3>Data Fields</h3>
+                        <div id="fieldList" class="field-list"></div>
+                    </div>
+
+                    <!-- Scenarios -->
+                    <div class="scenarios-section">
+                        <h3>Demo Scenarios</h3>
+                        <p class="section-subtitle">Select a scenario to see the rule engine in action</p>
+                        <div id="scenariosList" class="scenarios-grid"></div>
+                    </div>
+
+                    <!-- Loaded Rules Display -->
+                    <div id="rulesDisplay" class="rules-display" style="display: none;">
+                        <h3>Loaded Rules</h3>
+                        <div id="rulesList" class="rules-list"></div>
+                    </div>
+
+                    <!-- Execution Results -->
+                    <div id="resultsSection" class="results-section" style="display: none;">
+                        <h3>Execution Results</h3>
+                        <div id="executionSummary" class="execution-summary"></div>
+                        <div id="executionResults" class="execution-results"></div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Modal for Rule Details -->
+        <div id="ruleModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Rule Details</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body" id="modalBody"></div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p id="loadingText">Loading...</p>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toastContainer" class="toast-container"></div>
+    </div>
+
+    <script src="/js/demo.js"></script>
+</body>
+</html>
