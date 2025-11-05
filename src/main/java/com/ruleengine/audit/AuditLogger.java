@@ -214,6 +214,140 @@ public class AuditLogger {
     }
 
     /**
+     * Get total executions
+     */
+    public long getTotalExecutions() {
+        return auditLog.values().stream()
+                .flatMap(List::stream)
+                .filter(e -> e.eventType() == AuditEventType.RULE_EXECUTION)
+                .count();
+    }
+
+    /**
+     * Get total matches
+     */
+    public long getTotalMatches() {
+        return auditLog.values().stream()
+                .flatMap(List::stream)
+                .filter(e -> e.eventType() == AuditEventType.RULE_EXECUTION && Boolean.TRUE.equals(e.matched()))
+                .count();
+    }
+
+    /**
+     * Get total errors
+     */
+    public long getTotalErrors() {
+        return auditLog.values().stream()
+                .flatMap(List::stream)
+                .filter(e -> e.eventType() == AuditEventType.RULE_ERROR)
+                .count();
+    }
+
+    /**
+     * Get average execution time
+     */
+    public double getAverageExecutionTime() {
+        return auditLog.values().stream()
+                .flatMap(List::stream)
+                .filter(e -> e.eventType() == AuditEventType.RULE_EXECUTION && e.executionTimeMs() != null)
+                .mapToLong(AuditEntry::executionTimeMs)
+                .average()
+                .orElse(0.0);
+    }
+
+    /**
+     * Get success rate (percentage of executions that matched)
+     */
+    public double getSuccessRate() {
+        long total = getTotalExecutions();
+        if (total == 0) {
+            return 0.0;
+        }
+        long matches = getTotalMatches();
+        return (matches * 100.0) / total;
+    }
+
+    /**
+     * Get recent executions (limited)
+     */
+    public List<AuditEntry> getRecentExecutions(int limit) {
+        return auditLog.values().stream()
+                .flatMap(List::stream)
+                .filter(e -> e.eventType() == AuditEventType.RULE_EXECUTION)
+                .sorted((a, b) -> b.timestamp().compareTo(a.timestamp()))
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get executions by hour (last 24 hours)
+     */
+    public Map<String, Long> getExecutionsByHour() {
+        Instant now = Instant.now();
+        Instant dayAgo = now.minusSeconds(86400);
+
+        return auditLog.values().stream()
+                .flatMap(List::stream)
+                .filter(e -> e.eventType() == AuditEventType.RULE_EXECUTION)
+                .filter(e -> e.timestamp().isAfter(dayAgo))
+                .collect(Collectors.groupingBy(
+                        e -> String.valueOf(e.timestamp().getEpochSecond() / 3600),
+                        Collectors.counting()
+                ));
+    }
+
+    /**
+     * Get executions by status
+     */
+    public Map<String, Long> getExecutionsByStatus() {
+        return auditLog.values().stream()
+                .flatMap(List::stream)
+                .filter(e -> e.eventType() == AuditEventType.RULE_EXECUTION)
+                .collect(Collectors.groupingBy(
+                        e -> e.status() != null ? e.status() : "UNKNOWN",
+                        Collectors.counting()
+                ));
+    }
+
+    /**
+     * Get execution statistics for a specific rule
+     */
+    public RuleExecutionStats getRuleExecutionStats(String ruleId) {
+        List<AuditEntry> entries = auditLog.getOrDefault(ruleId, List.of()).stream()
+                .filter(e -> e.eventType() == AuditEventType.RULE_EXECUTION)
+                .toList();
+
+        long executionCount = entries.size();
+        long matchCount = entries.stream().filter(e -> Boolean.TRUE.equals(e.matched())).count();
+        double avgTime = entries.stream()
+                .filter(e -> e.executionTimeMs() != null)
+                .mapToLong(AuditEntry::executionTimeMs)
+                .average()
+                .orElse(0.0);
+        long errorCount = auditLog.getOrDefault(ruleId, List.of()).stream()
+                .filter(e -> e.eventType() == AuditEventType.RULE_ERROR)
+                .count();
+
+        return new RuleExecutionStats(
+                ruleId,
+                executionCount,
+                matchCount,
+                avgTime,
+                errorCount,
+                executionCount > 0 ? (matchCount * 100.0) / executionCount : 0.0
+        );
+    }
+
+    public record RuleExecutionStats(
+            String ruleId,
+            long executionCount,
+            long matchCount,
+            double avgExecutionTimeMs,
+            long errorCount,
+            double matchRate
+    ) {}
+
+    /**
      * Clear audit log
      */
     public void clear() {

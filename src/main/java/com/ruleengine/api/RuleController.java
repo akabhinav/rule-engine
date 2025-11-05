@@ -6,6 +6,8 @@ import com.ruleengine.model.Rule;
 import com.ruleengine.model.RuleContext;
 import com.ruleengine.model.RuleResult;
 import com.ruleengine.service.RuleService;
+import com.ruleengine.websocket.RuleExecutionNotifier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +22,13 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/rules")
+@CrossOrigin(origins = "*")
 public class RuleController {
 
     private final RuleService ruleService;
+
+    @Autowired(required = false)
+    private RuleExecutionNotifier executionNotifier;
 
     public RuleController(RuleService ruleService) {
         this.ruleService = ruleService;
@@ -34,6 +40,12 @@ public class RuleController {
     @PostMapping
     public ResponseEntity<Rule> createRule(@RequestBody Rule rule) {
         Rule created = ruleService.createRule(rule);
+
+        // Notify about rule creation
+        if (executionNotifier != null) {
+            executionNotifier.notifyRuleChange("CREATED", created.getId(), created.getName());
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -82,6 +94,12 @@ public class RuleController {
     public ResponseEntity<Rule> updateRule(@PathVariable String id, @RequestBody Rule rule) {
         try {
             Rule updated = ruleService.updateRule(id, rule);
+
+            // Notify about rule update
+            if (executionNotifier != null) {
+                executionNotifier.notifyRuleChange("UPDATED", updated.getId(), updated.getName());
+            }
+
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
@@ -93,7 +111,14 @@ public class RuleController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRule(@PathVariable String id) {
+        Rule rule = ruleService.getRule(id).orElse(null);
         ruleService.deleteRule(id);
+
+        // Notify about rule deletion
+        if (executionNotifier != null && rule != null) {
+            executionNotifier.notifyRuleChange("DELETED", id, rule.getName());
+        }
+
         return ResponseEntity.noContent().build();
     }
 

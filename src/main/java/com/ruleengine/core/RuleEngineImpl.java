@@ -3,6 +3,7 @@ package com.ruleengine.core;
 import com.ruleengine.audit.AuditLogger;
 import com.ruleengine.evaluator.ExpressionEvaluator;
 import com.ruleengine.model.*;
+import com.ruleengine.websocket.RuleExecutionNotifier;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -43,6 +44,7 @@ public class RuleEngineImpl implements RuleEngine {
     private final RuleIndexer ruleIndexer;
     private final TemporalRuleExecutor temporalExecutor;
     private final AuditLogger auditLogger;
+    private final RuleExecutionNotifier executionNotifier;
 
     // Statistics
     private final AtomicLong totalExecutions = new AtomicLong(0);
@@ -61,13 +63,15 @@ public class RuleEngineImpl implements RuleEngine {
             MeterRegistry meterRegistry,
             @Autowired(required = false) RuleIndexer ruleIndexer,
             @Autowired(required = false) TemporalRuleExecutor temporalExecutor,
-            @Autowired(required = false) AuditLogger auditLogger) {
+            @Autowired(required = false) AuditLogger auditLogger,
+            @Autowired(required = false) RuleExecutionNotifier executionNotifier) {
         this.evaluators = evaluators;
         this.actionExecutor = actionExecutor;
         this.meterRegistry = meterRegistry;
         this.ruleIndexer = ruleIndexer;
         this.temporalExecutor = temporalExecutor;
         this.auditLogger = auditLogger;
+        this.executionNotifier = executionNotifier;
 
         // Initialize metrics
         this.executionTimer = Timer.builder("rule.execution.time")
@@ -162,6 +166,11 @@ public class RuleEngineImpl implements RuleEngine {
             // Audit logging (Phase 2 feature)
             if (auditLogger != null) {
                 auditLogger.logExecution(rule, context, result);
+            }
+
+            // WebSocket notification (Phase 4 feature)
+            if (executionNotifier != null) {
+                executionNotifier.notifyExecution(result);
             }
 
             logger.debug("Rule {} executed: matched={}, time={}ms",
